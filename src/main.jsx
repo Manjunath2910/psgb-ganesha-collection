@@ -151,43 +151,66 @@ function App() {
     }
   }
 
-  async function sendPdfViaWhatsApp(receiptData = receipt) {
+  // Shares the actual PDF file through the phone's share sheet (pick WhatsApp,
+  // then the donor). This is the only way to send the real PDF file.
+  async function sharePdfFile(receiptData = receipt) {
     if (!receiptData) return;
     setError('');
     setLastShared(false);
     try {
       const blob = await buildPdfBlob(receiptData);
       const file = new File([blob], `${sanitizeFileName(receiptData.receiptNo)}.pdf`, { type: 'application/pdf' });
-      const shareText = [
-        '🙏 Ganesh Chaturthi Collection Receipt',
-        '',
-        TEAM.nameKannada,
-        TEAM.nameEnglish,
-        '',
-        `Receipt No: ${receiptData.receiptNo}`,
-        `Devotee Name: ${receiptData.devoteeName}`,
-        `Amount: ${formatMoney(receiptData.amount)}`,
-        '',
-        'Thank you for your valuable contribution. 🙏',
-      ].join('\n');
-
-      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+      const shareText = `🙏 Ganesh Chaturthi Collection Receipt\n${TEAM.nameEnglish}\nReceipt No: ${receiptData.receiptNo}\nDevotee: ${receiptData.devoteeName}\nAmount: ${formatMoney(receiptData.amount)}`;
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({ title: `${TEAM.nameEnglish} - Receipt`, text: shareText, files: [file] });
         setLastShared(true);
         return;
       }
-
-      if (navigator.share) {
-        await navigator.share({ title: `${TEAM.nameEnglish} - Receipt`, text: shareText });
-        setError('This device can share text, but its browser does not support attaching the PDF file. Please use Chrome/Safari on a supported mobile device to share the PDF to WhatsApp.');
-        return;
-      }
-
-      setError('PDF-to-WhatsApp sharing requires a supported mobile browser. Use Download PDF for desktop, or open this site on Android/iPhone to share the PDF directly.');
+      // Desktop / unsupported browsers: fall back to downloading the PDF file.
+      await downloadPdf(receiptData);
+      setError('This browser cannot attach files to WhatsApp. The PDF was downloaded — attach it in WhatsApp, or use a phone to share it directly.');
     } catch (err) {
       if (err?.name === 'AbortError') return;
       setError(`Could not share the PDF: ${err.message}`);
     }
+  }
+
+  // Opens WhatsApp directly to the donor's number (typed at the top) with the
+  // full receipt prefilled as a message — the operator just taps Send.
+  // Note: WhatsApp does not allow a link to auto-attach a file, so the receipt
+  // is sent as text. Use "Download PDF" when the PDF file itself is needed.
+  function sendReceiptOnWhatsApp(receiptData = receipt) {
+    if (!receiptData) return;
+    setError('');
+    setLastShared(false);
+    const phone = String(receiptData.phone || '').replace(/\D/g, '');
+    if (phone.length !== 10) {
+      setError("Please enter the donor's 10-digit WhatsApp number before sending.");
+      return;
+    }
+    const text = [
+      '🙏 Ganesh Chaturthi Collection Receipt',
+      '',
+      TEAM.nameKannada,
+      TEAM.nameEnglish,
+      '',
+      `Receipt No: ${receiptData.receiptNo}`,
+      `Date: ${receiptData.date}  ${receiptData.time}`,
+      `Devotee Name: ${receiptData.devoteeName}`,
+      `Amount: ${formatMoney(receiptData.amount)}`,
+      `Payment Mode: ${receiptData.paymentMode}`,
+      '',
+      'Thank you for your valuable contribution. 🙏',
+    ].join('\n');
+    const waUrl = `https://wa.me/91${phone}?text=${encodeURIComponent(text)}`;
+    const link = document.createElement('a');
+    link.href = waUrl;
+    link.target = '_blank';
+    link.rel = 'noopener';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setLastShared(true);
   }
 
   function sendSms(receiptData = receipt) {
@@ -284,8 +307,8 @@ function App() {
             <p className="thank-you">Thank you for your valuable contribution to the Ganesha festival. 🙏</p>
           </div>
           {error && <p className="error result-error">{error}</p>}
-          {lastShared && <p className="share-success"><MessageCircle size={18} /> PDF shared. Select WhatsApp and the donor chat in the share sheet.</p>}
-          <div className="action-row"><button className="secondary-btn" onClick={() => downloadPdf(receipt)}><Download size={18} /> Download PDF</button><button className="whatsapp-btn" onClick={() => sendPdfViaWhatsApp(receipt)}><MessageCircle size={18} /> Send PDF via WhatsApp</button><button className="sms-btn" onClick={() => sendSms(receipt)}><Smartphone size={18} /> Send SMS</button></div>
+          {lastShared && <p className="share-success"><MessageCircle size={18} /> WhatsApp opened for {receipt.phone}. Just tap Send.</p>}
+          <div className="action-row"><button className="secondary-btn" onClick={() => downloadPdf(receipt)}><Download size={18} /> Download PDF</button><button className="whatsapp-btn" onClick={() => sendReceiptOnWhatsApp(receipt)}><MessageCircle size={18} /> Send via WhatsApp</button><button className="secondary-btn" onClick={() => sharePdfFile(receipt)}><FileText size={18} /> Share PDF</button><button className="sms-btn" onClick={() => sendSms(receipt)}><Smartphone size={18} /> Send SMS</button></div>
           <button className="new-btn" onClick={() => { setReceipt(null); setSelectedDonor(null); setForm(initialForm); setError(''); setLastShared(false); }}>Create New Receipt</button>
           <button className="back-list-btn" onClick={() => { setReceipt(null); setSelectedDonor(null); setError(''); }}>← Back to Donor List</button>
         </section>
