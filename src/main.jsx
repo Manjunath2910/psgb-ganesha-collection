@@ -307,8 +307,8 @@ function App() {
             <p className="thank-you">Thank you for your valuable contribution to the Ganesha festival. 🙏</p>
           </div>
           {error && <p className="error result-error">{error}</p>}
-          {lastShared && <p className="share-success"><MessageCircle size={18} /> WhatsApp opened for {receipt.phone}. Just tap Send.</p>}
-          <div className="action-row"><button className="secondary-btn" onClick={() => downloadPdf(receipt)}><Download size={18} /> Download PDF</button><button className="whatsapp-btn" onClick={() => sendReceiptOnWhatsApp(receipt)}><MessageCircle size={18} /> Send via WhatsApp</button><button className="secondary-btn" onClick={() => sharePdfFile(receipt)}><FileText size={18} /> Share PDF</button><button className="sms-btn" onClick={() => sendSms(receipt)}><Smartphone size={18} /> Send SMS</button></div>
+          {lastShared && <p className="share-success"><MessageCircle size={18} /> Opened in WhatsApp — pick the donor if asked, then tap Send.</p>}
+          <div className="action-row"><button className="whatsapp-btn" onClick={() => sharePdfFile(receipt)}><MessageCircle size={18} /> Send PDF via WhatsApp</button><button className="secondary-btn" onClick={() => sendReceiptOnWhatsApp(receipt)}><MessageCircle size={18} /> Send as text</button><button className="secondary-btn" onClick={() => downloadPdf(receipt)}><Download size={18} /> Download PDF</button><button className="sms-btn" onClick={() => sendSms(receipt)}><Smartphone size={18} /> Send SMS</button></div>
           <button className="new-btn" onClick={() => { setReceipt(null); setSelectedDonor(null); setForm(initialForm); setError(''); setLastShared(false); }}>Create New Receipt</button>
           <button className="back-list-btn" onClick={() => { setReceipt(null); setSelectedDonor(null); setError(''); }}>← Back to Donor List</button>
         </section>
